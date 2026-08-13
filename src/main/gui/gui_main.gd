@@ -92,7 +92,11 @@ func _ready() -> void:
 		self, "main_current_tab", true
 	)
 	_tab_container.tab_changed.connect(func(tab: int) -> void: main_current_tab.put(tab))
-	_tab_container.current_tab = main_current_tab.ret(0)
+	# Loading up AssetLib from preview can cause a wird race condition. this isnt a problem in the release so I just hard code this stupid solution
+	if OS.has_feature("editor"):
+		_tab_container.current_tab = 0  
+	else:
+		_tab_container.current_tab = main_current_tab.ret(0)
 
 	_local_editors.editor_download_pressed.connect(func() -> void:
 		_tab_container.current_tab = _tab_container.get_tab_idx_from_control(_remote_editors)
