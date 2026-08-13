@@ -225,10 +225,9 @@ func _popup_manage_tags(item_tags: Array, all_tags: Array, on_confirm: Callable)
 
 
 func _setup_asset_lib_projects() -> void:
-	var version_src := GodotVersionOptionButton.SrcGithubYml.new(
-		RemoteEditorsTreeDataSourceGithub.YmlSourceGithub.new()
+	var version_src := GodotVersionOptionButton.LocalGodotVersion.new(
+		_local_editors_service
 	)
-#	var version_src = GodotVersionOptionButton.SrcMock.new(["4.1"])
 	
 	var request := HTTPRequest.new()
 	add_child(request)

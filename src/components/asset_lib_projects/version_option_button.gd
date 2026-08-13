@@ -43,24 +43,21 @@ class SrcMock extends Src:
 		return _data
 
 
-class SrcGithubYml extends Src:
-	var _yml_src: RemoteEditorsTreeDataSourceGithub.YmlSource
-	var _name_regex := RegEx.create_from_string('(?m)\\sname:\\s"(?<name>[^"]+)"$')
+class LocalGodotVersion extends Src:
+	var _version_list : LocalEditors.List
 	
-	func _init(yml_src: RemoteEditorsTreeDataSourceGithub.YmlSource) -> void:
-		_yml_src = yml_src
+	func _init(version_list: LocalEditors.List) -> void:
+		_version_list = version_list
 	
 	func async_fetch(errors: Array[String]=[]) -> PackedStringArray:
-		var yml := await _yml_src.async_load(errors)
-		var versions := _name_regex.search_all(yml)
+		var local_godot_version : Array[LocalEditors.Item] = _version_list.all()
+		
 		var result: PackedStringArray = []
-		for version_result in versions:
-			var version := version_result.get_string("name")
-			version = version.substr(0, 3)
-			if not version.is_valid_float():
-				continue
-			if not version in result:
-				result.append(version)
+		for ver in local_godot_version:
+			var parsed: String = ver.get_version()
+			var major_minor_strip: String = parsed.substr(0, 3)
+			if not major_minor_strip in result:
+				result.append(major_minor_strip)
 		if len(result) == 0:
 			errors.append(tr("Empty versions list!"))
 		return result
