@@ -270,9 +270,15 @@ func _setup_asset_lib_projects() -> void:
 			# 	zip_reader,
 			# 	item.title
 			# )
+			var manifest := {"download_url": item.download_url}
+			var plug_repo := AddonManifest.plug_repo_from_browse_url(item.browse_url)
+			if not plug_repo.is_empty():
+				manifest["plug"] = plug_repo
 			var install_err := Config.install_addon_zip(
 				abs_zip_path,
-				godot_version
+				godot_version,
+				false,
+				manifest
 			)
 			if install_err != OK:
 				asset_download.set_status(tr("Failed to install addon."))

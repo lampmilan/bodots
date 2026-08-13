@@ -350,13 +350,22 @@ static func enable_global_addon_for_project(
 	if not DirAccess.dir_exists_absolute(src):
 		return ERR_FILE_NOT_FOUND
 	var dest := project_addon_path(project_godot_path, addon_folder)
-	if DirAccess.dir_exists_absolute(dest) or _is_dir_link(dest):
-		return OK
-	var addons_root := dest.get_base_dir()
-	var mk_err := DirAccess.make_dir_recursive_absolute(addons_root)
-	if mk_err != OK:
-		return mk_err
-	return _create_dir_link(src, dest)
+	var linked := DirAccess.dir_exists_absolute(dest) or _is_dir_link(dest)
+	if not linked:
+		var addons_root := dest.get_base_dir()
+		var mk_err := DirAccess.make_dir_recursive_absolute(addons_root)
+		if mk_err != OK:
+			return mk_err
+		var link_err := _create_dir_link(src, dest)
+		if link_err != OK:
+			return link_err
+	var sync_err := AddonManifest.sync_plug_on_enable(project_godot_path, src)
+	if sync_err != OK:
+		Output.push(
+			"Linked addon '%s' but failed to update plug.gd: %s"
+			% [addon_folder, error_string(sync_err)]
+		)
+	return OK
 
 
 static func disable_global_addon_for_project(
@@ -370,16 +379,21 @@ static func disable_global_addon_for_project(
 	var dest := project_addon_path(project_godot_path, addon_folder)
 	if not DirAccess.dir_exists_absolute(dest) and not _is_dir_link(dest):
 		return OK
+	var manifest := AddonManifest.read_manifest(dest)
+	var plug_repo: String = manifest.get("plug", "")
+	var err: Error = OK
 	# Prefer removing a link only; fall back to recursive delete for copies.
 	if _is_dir_link(dest):
-		var err := DirAccess.remove_absolute(dest)
-		return err
-	var marker := dest.path_join(".godots-global-addon")
-	if FileAccess.file_exists(marker):
+		err = DirAccess.remove_absolute(dest)
+	elif FileAccess.file_exists(dest.path_join(".godots-global-addon")):
 		edir.remove_recursive(dest)
-		return OK if not DirAccess.dir_exists_absolute(dest) else FAILED
-	# Existing local addon with same name — do not delete.
-	return ERR_ALREADY_EXISTS
+		err = OK if not DirAccess.dir_exists_absolute(dest) else FAILED
+	else:
+		# Existing local addon with same name — do not delete.
+		return ERR_ALREADY_EXISTS
+	if err == OK:
+		AddonManifest.sync_plug_on_disable(project_godot_path, plug_repo)
+	return err
 
 
 static func _create_dir_link(target_abs: String, link_abs: String) -> Error:
@@ -665,7 +679,11 @@ func link_shared_gd_plug_to_project(project_dir: String) -> Error:
 
 ## Finds addon folders in the zip (under any **/addons/{name}/ path, or as
 ## top-level folders) and copies them to the given addons bucket.
-func install_addon_zip_to(zip_abs_path: String, bucket: String) -> Error:
+func install_addon_zip_to(
+	zip_abs_path: String,
+	bucket: String,
+	manifest: Dictionary = {}
+) -> Error:
 	if bucket.is_empty():
 		return ERR_INVALID_PARAMETER
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(bucket))
@@ -698,6 +716,13 @@ func install_addon_zip_to(zip_abs_path: String, bucket: String) -> Error:
 		if copy_err != OK:
 			reader.close()
 			return copy_err
+		if not manifest.is_empty():
+			var manifest_err := AddonManifest.write_manifest(abs_dest, manifest)
+			if manifest_err != OK:
+				Output.push(
+					"Installed addon '%s' but failed to write manifest.json: %s"
+					% [plugin_name, error_string(manifest_err)]
+				)
 		Output.push("Installed addon '%s' to %s" % [plugin_name, abs_dest])
 		installed += 1
 
@@ -710,12 +735,13 @@ func install_addon_zip_to(zip_abs_path: String, bucket: String) -> Error:
 func install_addon_zip(
 	zip_abs_path: String,
 	version: String,
-	is_mono := false
+	is_mono := false,
+	manifest: Dictionary = {}
 ) -> Error:
 	var bucket := ensure_addons_dir(version, is_mono)
 	if bucket.is_empty():
 		return ERR_INVALID_PARAMETER
-	return install_addon_zip_to(zip_abs_path, bucket)
+	return install_addon_zip_to(zip_abs_path, bucket, manifest)
 
 
 func _find_addon_extract_targets(
