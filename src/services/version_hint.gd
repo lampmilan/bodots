@@ -47,6 +47,10 @@ static func same_version(a: String, b: String) -> bool:
 	return parse(a).version == parse(b).version
 
 
+static func same_minor(a: String, b: String) -> bool:
+	return parse(a).minor_version == parse(b).minor_version
+
+
 static func parse(version_hint: String) -> Item:
 	var tags: Array
 	version_hint = version_hint.to_lower().strip_edges()

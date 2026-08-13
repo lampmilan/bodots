@@ -32,6 +32,7 @@ class List extends RefCounted:
 		editor.favorite = false
 		editor.extra_arguments = []
 		_editors[editor_path] = editor
+		ensure_addons_bucket(editor)
 		return editor
 	
 	func all() -> Array[Item]:
@@ -66,7 +67,13 @@ class List extends RefCounted:
 					'version_hint': x.version_hint
 				})
 		return result
-	
+
+	func ensure_addons_bucket(editor: Item) -> String:
+		var parsed := VersionHint.parse(editor.version_hint)
+		if not parsed.is_valid or parsed.minor_version.is_empty():
+			return ""
+		return Config.ensure_addons_dir(parsed.minor_version, parsed.is_mono)
+
 	# TODO type
 	func get_all_tags() -> Array:
 		var set := Set.new()
@@ -97,6 +104,10 @@ class List extends RefCounted:
 		editor.name_changed.connect(func(_new_name: String) -> void: 
 			editor_name_changed.emit(editor.path)
 		)
+	
+	func _create_addon_folder() -> void:
+		
+		pass
 
 
 class Item extends Object:

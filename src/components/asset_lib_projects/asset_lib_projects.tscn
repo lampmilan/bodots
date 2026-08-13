@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://cdyq5l2atcuap"]
+[gd_scene format=3 uid="uid://cdyq5l2atcuap"]
 
 [ext_resource type="Script" uid="uid://cxev0xr1dbq5q" path="res://src/components/asset_lib_projects/asset_lib_projects.gd" id="1_fn8cl"]
 [ext_resource type="Script" uid="uid://dcjieukjjp1kc" path="res://src/components/asset_lib_projects/version_option_button.gd" id="2_1nxlp"]
@@ -17,7 +17,7 @@
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1dth3"]
 
-[node name="AssetLibProjects" type="PanelContainer" node_paths=PackedStringArray("_params_sources")]
+[node name="AssetLibProjects" type="PanelContainer" unique_id=438677944 node_paths=PackedStringArray("_params_sources")]
 clip_children = 1
 clip_contents = true
 anchors_preset = 15
@@ -31,27 +31,27 @@ script = ExtResource("1_fn8cl")
 _params_sources = [NodePath("Container/HBoxContainer/VersionContainer/VersionOptionButton"), NodePath("Container/HBoxContainer/SortContainer/SortOptionButton"), NodePath("Container/HBoxContainer/CategoryContainer/CategoryOptionButton"), NodePath("Container/HBoxContainer/SupportMenuButton"), NodePath("Container/FilterEdit"), NodePath("Container/HBoxContainer/SiteContainer/SiteOptionButton")]
 _item_details_scene = ExtResource("2_ckq1w")
 
-[node name="Container" type="VBoxContainer" parent="."]
+[node name="Container" type="VBoxContainer" parent="." unique_id=1648820391]
 layout_mode = 2
 
-[node name="FilterEdit" type="LineEdit" parent="Container"]
+[node name="FilterEdit" type="LineEdit" parent="Container" unique_id=1346834851]
 unique_name_in_owner = true
 layout_mode = 2
 clear_button_enabled = true
 script = ExtResource("2_t0xar")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="Container"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Container" unique_id=1561561746]
 layout_mode = 2
 
-[node name="VersionContainer" type="HBoxContainer" parent="Container/HBoxContainer"]
+[node name="VersionContainer" type="HBoxContainer" parent="Container/HBoxContainer" unique_id=524833988]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Container/HBoxContainer/VersionContainer"]
+[node name="Label" type="Label" parent="Container/HBoxContainer/VersionContainer" unique_id=2114278045]
 layout_mode = 2
 text = "Version:"
 
-[node name="VersionOptionButton" type="OptionButton" parent="Container/HBoxContainer/VersionContainer"]
+[node name="VersionOptionButton" type="OptionButton" parent="Container/HBoxContainer/VersionContainer" unique_id=1096287599]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -59,18 +59,18 @@ text_overrun_behavior = 3
 clip_text = true
 script = ExtResource("2_1nxlp")
 
-[node name="VSeparator" type="VSeparator" parent="Container/HBoxContainer/VersionContainer"]
+[node name="VSeparator" type="VSeparator" parent="Container/HBoxContainer/VersionContainer" unique_id=1046753171]
 layout_mode = 2
 
-[node name="SortContainer" type="HBoxContainer" parent="Container/HBoxContainer"]
+[node name="SortContainer" type="HBoxContainer" parent="Container/HBoxContainer" unique_id=377847314]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Container/HBoxContainer/SortContainer"]
+[node name="Label" type="Label" parent="Container/HBoxContainer/SortContainer" unique_id=1558313112]
 layout_mode = 2
 text = "Sort:"
 
-[node name="SortOptionButton" type="OptionButton" parent="Container/HBoxContainer/SortContainer"]
+[node name="SortOptionButton" type="OptionButton" parent="Container/HBoxContainer/SortContainer" unique_id=433384569]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -78,18 +78,19 @@ text_overrun_behavior = 3
 clip_text = true
 script = ExtResource("2_actq8")
 
-[node name="VSeparator" type="VSeparator" parent="Container/HBoxContainer/SortContainer"]
+[node name="VSeparator" type="VSeparator" parent="Container/HBoxContainer/SortContainer" unique_id=1714145122]
 layout_mode = 2
 
-[node name="CategoryContainer" type="HBoxContainer" parent="Container/HBoxContainer"]
+[node name="CategoryContainer" type="HBoxContainer" parent="Container/HBoxContainer" unique_id=1212574886]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label2" type="Label" parent="Container/HBoxContainer/CategoryContainer"]
+[node name="Label2" type="Label" parent="Container/HBoxContainer/CategoryContainer" unique_id=1127600571]
 layout_mode = 2
 text = "Category:"
 
-[node name="CategoryOptionButton" type="OptionButton" parent="Container/HBoxContainer/CategoryContainer"]
+[node name="CategoryOptionButton" type="OptionButton" parent="Container/HBoxContainer/CategoryContainer" unique_id=1216218747]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -97,18 +98,18 @@ text_overrun_behavior = 3
 clip_text = true
 script = ExtResource("2_p84kh")
 
-[node name="VSeparator2" type="VSeparator" parent="Container/HBoxContainer/CategoryContainer"]
+[node name="VSeparator2" type="VSeparator" parent="Container/HBoxContainer/CategoryContainer" unique_id=79094908]
 layout_mode = 2
 
-[node name="SiteContainer" type="HBoxContainer" parent="Container/HBoxContainer"]
+[node name="SiteContainer" type="HBoxContainer" parent="Container/HBoxContainer" unique_id=1794070835]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label3" type="Label" parent="Container/HBoxContainer/SiteContainer"]
+[node name="Label3" type="Label" parent="Container/HBoxContainer/SiteContainer" unique_id=1612133500]
 layout_mode = 2
 text = "Site:"
 
-[node name="SiteOptionButton" type="OptionButton" parent="Container/HBoxContainer/SiteContainer"]
+[node name="SiteOptionButton" type="OptionButton" parent="Container/HBoxContainer/SiteContainer" unique_id=697622462]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -116,32 +117,32 @@ text_overrun_behavior = 3
 clip_text = true
 script = ExtResource("4_b1ik8")
 
-[node name="VSeparator3" type="VSeparator" parent="Container/HBoxContainer/SiteContainer"]
+[node name="VSeparator3" type="VSeparator" parent="Container/HBoxContainer/SiteContainer" unique_id=392600231]
 layout_mode = 2
 
-[node name="SupportMenuButton" type="MenuButton" parent="Container/HBoxContainer"]
+[node name="SupportMenuButton" type="MenuButton" parent="Container/HBoxContainer" unique_id=1653792068]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Support"
 script = ExtResource("2_ijehd")
 
-[node name="ScrollContainer" type="ScrollContainer" parent="Container"]
+[node name="ScrollContainer" type="ScrollContainer" parent="Container" unique_id=1454997466]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("9_goqgb")
 
-[node name="LibVb" type="VBoxContainer" parent="Container/ScrollContainer"]
+[node name="LibVb" type="VBoxContainer" parent="Container/ScrollContainer" unique_id=714079569]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="VBoxContainer" type="VBoxContainer" parent="Container/ScrollContainer/LibVb"]
+[node name="VBoxContainer" type="VBoxContainer" parent="Container/ScrollContainer/LibVb" unique_id=559496875]
 layout_mode = 2
 alignment = 1
 
-[node name="StatusLabel" type="Label" parent="Container/ScrollContainer/LibVb/VBoxContainer"]
+[node name="StatusLabel" type="Label" parent="Container/ScrollContainer/LibVb/VBoxContainer" unique_id=2086013489]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -149,18 +150,18 @@ text = "Loading...."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="RetryButtonContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb/VBoxContainer"]
+[node name="RetryButtonContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb/VBoxContainer" unique_id=1730089769]
 unique_name_in_owner = true
 layout_mode = 2
 script = ExtResource("9_bqy5j")
 
-[node name="TopPagesContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb"]
+[node name="TopPagesContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb" unique_id=1825195152]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
 script = ExtResource("9_uoavf")
 
-[node name="AssetsContainer" type="GridContainer" parent="Container/ScrollContainer/LibVb" node_paths=PackedStringArray("_size_source")]
+[node name="AssetsContainer" type="GridContainer" parent="Container/ScrollContainer/LibVb" unique_id=28698433 node_paths=PackedStringArray("_size_source")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
@@ -168,17 +169,17 @@ script = ExtResource("3_ymc38")
 _list_item_scene = ExtResource("2_d1s0v")
 _size_source = NodePath("../../../..")
 
-[node name="BotPagesContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb"]
+[node name="BotPagesContainer" type="HBoxContainer" parent="Container/ScrollContainer/LibVb" unique_id=1706778814]
 unique_name_in_owner = true
 layout_mode = 2
 alignment = 1
 script = ExtResource("9_uoavf")
 
-[node name="Control" type="Control" parent="Container/ScrollContainer/LibVb"]
+[node name="Control" type="Control" parent="Container/ScrollContainer/LibVb" unique_id=963102655]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="ErrorContainer" type="HBoxContainer" parent="Container"]
+[node name="ErrorContainer" type="HBoxContainer" parent="Container" unique_id=268045239]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2

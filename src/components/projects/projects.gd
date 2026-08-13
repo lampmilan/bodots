@@ -165,6 +165,8 @@ func import(project_path := "", callback: Variant = null) -> void:
 
 
 func install_zip(zip_reader: ZIPReader, project_name: String) -> void:
+	# DEPRICATED : Addons now will automiacitlly installed to the addons bucket
+	# Kept for drag-and-drop project.zip installs that contain project.godot.
 	if _install_project_from_zip_dialog.visible:
 		zip_reader.close()
 		return
@@ -190,6 +192,33 @@ func install_zip(zip_reader: ZIPReader, project_name: String) -> void:
 		CONNECT_ONE_SHOT
 	)
 
+
+# DEPRICATED : Addons now will automiacitlly installed to the addons bucket
+# func _new_install_zip(zip_reader: ZIPReader, project_name: String) -> void:
+# 	if _install_project_from_zip_dialog.visible:
+# 		zip_reader.close()
+# 		return
+# 	_install_project_from_zip_dialog.title = "Install Project: %s" % project_name
+# 	_install_project_from_zip_dialog.get_ok_button().text = tr("Install")
+# 	_install_project_from_zip_dialog.raise(project_name)
+# 	_install_project_from_zip_dialog.dialog_hide_on_ok = false
+# 	_install_project_from_zip_dialog.about_to_install.connect(func(final_project_name: String, project_dir: String) -> void:
+# 		var unzip_err := zip.unzip_to_path(zip_reader, project_dir)
+# 		zip_reader.close()
+# 		if unzip_err != OK:
+# 			_install_project_from_zip_dialog.error(tr("Failed to unzip."))
+# 			return
+# 		var project_configs := utils.find_project_godot_files(project_dir)
+# 		if len(project_configs) == 0:
+# 			_install_project_from_zip_dialog.error(tr("No project.godot found."))
+# 			return
+# 		
+# 		var project_file_path := project_configs[0]
+# 		_install_project_from_zip_dialog.hide()
+# 		import(project_file_path.path)
+# 		pass,
+# 		CONNECT_ONE_SHOT
+# 	)
 
 func _scan_projects(dir_path: String) -> void:
 	var project_configs := utils.find_project_godot_files(dir_path)

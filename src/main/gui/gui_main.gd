@@ -92,7 +92,7 @@ func _ready() -> void:
 		self, "main_current_tab", true
 	)
 	_tab_container.tab_changed.connect(func(tab: int) -> void: main_current_tab.put(tab))
-	# Loading up AssetLib from preview can cause a wird race condition. this isnt a problem in the release so I just hard code this stupid solution
+	# Loading up AssetLib from the editor can cause race condition. this isn't a problem in the release so I just hard code to always open Projects
 	if OS.has_feature("editor"):
 		_tab_container.current_tab = 0  
 	else:
@@ -244,6 +244,7 @@ func _setup_asset_lib_projects() -> void:
 		(%DownloadsContainer as DownloadsContainer).add_download_item(asset_download)
 		if icon != null:
 			asset_download.icon.texture = icon
+		var godot_version := _asset_lib_projects.get_selected_godot_version()
 		asset_download.start(
 			item.download_url, 
 			(Config.DOWNLOADS_PATH.ret() as String) + "/", 
@@ -259,15 +260,28 @@ func _setup_asset_lib_projects() -> void:
 					error += tr("Expected:") + " " + item.download_hash + "\n" + tr("Got:") + " " + download_hash
 					asset_download.popup_error_dialog(error)
 					return
-			var zip_reader := ZIPReader.new()
-			var unzip_err := zip_reader.open(abs_zip_path)
-			if unzip_err != OK:
-				zip_reader.close()
-				return
-			_projects.install_zip(
-				zip_reader,
-				item.title
+			# DEPRICATED : Addons now will automiacitlly installed to the addons bucket
+			# var zip_reader := ZIPReader.new()
+			# var unzip_err := zip_reader.open(abs_zip_path)
+			# if unzip_err != OK:
+			# 	zip_reader.close()
+			# 	return
+			# _projects.install_zip(
+			# 	zip_reader,
+			# 	item.title
+			# )
+			var install_err := Config.install_addon_zip(
+				abs_zip_path,
+				godot_version
 			)
+			if install_err != OK:
+				asset_download.set_status(tr("Failed to install addon."))
+				var msg := tr("Could not install addon into addons bucket for Godot %s.") % godot_version
+				if install_err == ERR_FILE_NOT_FOUND:
+					msg = tr("No plugin.cfg found in the downloaded archive.")
+				asset_download.popup_error_dialog(msg)
+				return
+			asset_download.set_status(tr("Addon installed."))
 		)
 	)
 	

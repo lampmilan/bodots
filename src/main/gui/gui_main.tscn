@@ -155,6 +155,7 @@ visible = false
 unique_name_in_owner = true
 
 [node name="Settings" parent="." unique_id=2056986480 instance=ExtResource("14_3j6hr")]
+oversampling_override = 1.0
 visible = false
 
 [editable path="GuiBase/MainVBox/TitleBar"]

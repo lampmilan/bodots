@@ -197,6 +197,11 @@ func _get_asset_lib() -> AssetLib.I:
 	return _asset_lib_factory.construct(_site_option_button.get_selected_site())
 
 
+func get_selected_godot_version() -> String:
+	var version:Variant= _version_option_button.get_selected_metadata()
+	return version as String if version != null else ""
+
+
 func _get_asset_lib_params() -> AssetLib.Params:
 	var params := AssetLib.Params.new()
 	_params_sources_composed.fill_params(params)
