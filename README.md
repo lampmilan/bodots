@@ -10,11 +10,10 @@ The main goal is to extend the default launcher with features, that might be coo
 ---
 
 ## **Features**
-- It's still the original Godots launcher :/
+- Global Add-ons
+  * Allow users to download/store add-ons globally and attach them to any project via symlinks/junctions.
 
 ## **VIP**
-- Global Add-ons & Symlink Engine
-  * Allow users to download/store add-ons globally and attach them to any project via symlinks/junctions.
 - Package Manager
   * Treat res://addons/ like node_modules/ driven by bodots.json
 - One-Click Git & LFS Initialization
