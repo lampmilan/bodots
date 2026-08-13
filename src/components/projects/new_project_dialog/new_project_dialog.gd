@@ -25,7 +25,7 @@ func _ready() -> void:
 		ctx.dir = _project_path_line_edit.text.strip_edges()
 		ctx.project_name = _project_name_edit.text.strip_edges()
 		ctx.form = _custom_form_tabs.get_current_tab_control()
-		handler.create_project(ctx)
+		await handler.create_project(ctx)
 	)
 
 
@@ -220,8 +220,18 @@ class NewProjectGodot4 extends NewProjectHandler:
 			return
 		else:
 			if form.plugin_manager() == "gd_plug":
+				var plug_err := await Config.ensure_shared_gd_plug()
+				if plug_err != OK:
+					ctx.show_error(
+						tr("Couldn't install gd-plug into the shared addons folder. Check the Output panel for details.")
+					)
+					return
 				if not _write_gd_plug(dir):
 					ctx.show_error(tr("Couldn't create plug.gd in project path."))
+					return
+				var link_err := Config.link_shared_gd_plug_to_project(dir)
+				if link_err != OK:
+					ctx.show_error(tr("Couldn't link gd-plug into project."))
 					return
 			if form.vsc_meta() == "git":
 				if not _write_gitignore(dir, form.plugin_manager() == "gd_plug"):
@@ -249,7 +259,6 @@ class NewProjectGodot4 extends NewProjectHandler:
 			'extends "res://addons/gd-plug/plug.gd"',
 			'func _plugging():',
 			'# Declare your plugins in here with plug(src, args)',
-			'pass',
 		]
 		for line in lines:
 			plug_gd.store_line(line)

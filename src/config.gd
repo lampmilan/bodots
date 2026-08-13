@@ -16,6 +16,9 @@ const DEFAULT_DOWNLOADS_PATH = "user://downloads"
 const DEFAULT_UPDATES_PATH = "user://updates"
 const DEFAULT_CACHE_DIR_PATH = "user://cache"
 const DEFAULT_ADDONS_PATH = "user://addons"
+const DEFAULT_SHARED_ADDONS_PATH = "user://addons/_shared"
+const GD_PLUG_RELEASE_URL = "https://github.com/imjp94/gd-plug/archive/64d0000ccfdb64c0864bab7d56c1008175cf977e.zip"
+const GD_PLUG_FOLDER = "gd-plug"
 const RELEASES_URL = "https://github.com/MakovWait/godots/releases"
 const RELEASES_LATEST_API_ENDPOINT = "https://api.github.com/repos/MakovWait/godots/releases/latest"
 const RELEASES_API_ENDPOINT = "https://api.github.com/repos/MakovWait/godots/releases"
@@ -23,6 +26,7 @@ const RELEASES_API_ENDPOINT = "https://api.github.com/repos/MakovWait/godots/rel
 const _EDITOR_PROXY_SECTION_NAME = "theme"
 
 var _random_project_names := RandomProjectNames.new()
+var _gd_plug_ensuring := false
 var _cfg := ConfigFile.new()
 var _cfg_auto_save := ConfigFileSaveOnSet.new(
 	IConfigFileLike.of_config(_cfg), 
@@ -483,39 +487,207 @@ func format_addon_dir_name(original_name: String) -> String:
 	return name
 
 
-## Finds each folder that contains plugin.cfg in the zip and copies it to
-## user://addons/{version}[/_mono]/{plugin_folder}/
-func install_addon_zip(
-	zip_abs_path: String,
-	version: String,
-	is_mono := false
-) -> Error:
-	var bucket := ensure_addons_dir(version, is_mono)
-	if bucket.is_empty():
-		return ERR_INVALID_PARAMETER
+func create_addon_folder() -> void:
+	pass
+
+
+static func shared_gd_plug_path() -> String:
+	return DEFAULT_SHARED_ADDONS_PATH.path_join(GD_PLUG_FOLDER)
+
+
+static func ensure_shared_addons_dir() -> String:
+	var abs_path := ProjectSettings.globalize_path(DEFAULT_SHARED_ADDONS_PATH)
+	DirAccess.make_dir_recursive_absolute(abs_path)
+	return DEFAULT_SHARED_ADDONS_PATH
+
+
+func is_shared_gd_plug_installed() -> bool:
+	var abs := ProjectSettings.globalize_path(shared_gd_plug_path())
+	return FileAccess.file_exists(abs.path_join("plug.gd"))
+
+
+func ensure_shared_gd_plug() -> Error:
+	ensure_shared_addons_dir()
+	if is_shared_gd_plug_installed():
+		_remove_stale_shared_gd_plug_folder()
+		return OK
+	if _gd_plug_ensuring:
+		while _gd_plug_ensuring:
+			await get_tree().process_frame
+		if is_shared_gd_plug_installed():
+			return OK
+	_gd_plug_ensuring = true
+	var err := await _install_shared_gd_plug()
+	_gd_plug_ensuring = false
+	return err
+
+
+func ensure_shared_gd_plug_bg() -> void:
+	if is_shared_gd_plug_installed():
+		return
+	call_deferred("_ensure_shared_gd_plug_async")
+
+
+func _ensure_shared_gd_plug_async() -> void:
+	await get_tree().process_frame
+	var err := await ensure_shared_gd_plug()
+	if err != OK:
+		Output.push("Could not install shared gd-plug: %s" % error_string(err))
+
+
+func _install_shared_gd_plug() -> Error:
+	var err := await _download_and_install_shared_gd_plug()
+	if is_shared_gd_plug_installed():
+		return OK
+	Output.push("gd-plug download did not produce plug.gd, trying bundled copy.")
+	err = _install_shared_gd_plug_from_bundle()
+	if is_shared_gd_plug_installed():
+		return OK
+	Output.push("Failed to install shared gd-plug after download and bundle fallback.")
+	return err if err != OK else FAILED
+
+
+func _download_and_install_shared_gd_plug() -> Error:
+	var download_dir := ProjectSettings.globalize_path(DEFAULT_DOWNLOADS_PATH)
+	DirAccess.make_dir_recursive_absolute(download_dir)
+	var zip_abs := download_dir.path_join("gd-plug.zip")
+
+	var response := HttpClient.Response.new(
+		await HttpClient.async_http_get(GD_PLUG_RELEASE_URL, [], zip_abs)
+	)
+	var info := response.to_response_info(GD_PLUG_RELEASE_URL, zip_abs)
+	if info.error_text:
+		Output.push("gd-plug download failed: %s" % info.error_text)
+		if FileAccess.file_exists(zip_abs):
+			DirAccess.remove_absolute(zip_abs)
+		return FAILED
+
+	var err := install_shared_gd_plug_zip(zip_abs)
+	if FileAccess.file_exists(zip_abs):
+		DirAccess.remove_absolute(zip_abs)
+	if err != OK:
+		Output.push("gd-plug zip install failed: %s" % error_string(err))
+		return err
+	if not is_shared_gd_plug_installed():
+		Output.push(
+			"gd-plug zip extracted but plug.gd is missing at %s"
+			% ProjectSettings.globalize_path(shared_gd_plug_path())
+		)
+		return FAILED
+	Output.push(
+		"Installed gd-plug from GitHub release to %s"
+		% ProjectSettings.globalize_path(shared_gd_plug_path())
+	)
+	return OK
+
+
+func install_shared_gd_plug_zip(zip_abs_path: String) -> Error:
+	ensure_shared_addons_dir()
+	_remove_stale_shared_gd_plug_folder()
 
 	var reader := ZIPReader.new()
 	var open_err := reader.open(zip_abs_path)
 	if open_err != OK:
 		return open_err
 
-	var plugin_cfg_paths: PackedStringArray = []
-	for entry in reader.get_files():
-		if entry.get_file() == "plugin.cfg":
-			plugin_cfg_paths.append(entry)
-
-	if plugin_cfg_paths.is_empty():
+	var prefix := _find_gd_plug_zip_prefix(reader.get_files())
+	if prefix.is_empty():
 		reader.close()
-		Output.push("No plugin.cfg found in addon zip: %s" % zip_abs_path)
+		Output.push("No addons/gd-plug/ folder found in zip: %s" % zip_abs_path)
+		return ERR_FILE_NOT_FOUND
+
+	var dest := shared_gd_plug_path()
+	var abs_dest := ProjectSettings.globalize_path(dest)
+	if DirAccess.dir_exists_absolute(abs_dest):
+		edir.remove_recursive(abs_dest)
+	DirAccess.make_dir_recursive_absolute(abs_dest)
+
+	var copy_err := _extract_zip_prefix(reader, prefix, dest)
+	reader.close()
+	return copy_err
+
+
+func _find_gd_plug_zip_prefix(entries: PackedStringArray) -> String:
+	for target: Variant in _find_addons_folder_targets(entries):
+		if target.name == GD_PLUG_FOLDER:
+			return target.prefix
+	return ""
+
+
+func _remove_stale_shared_gd_plug_folder() -> void:
+	var stale_name := format_addon_dir_name(GD_PLUG_FOLDER)
+	if stale_name == GD_PLUG_FOLDER:
+		return
+	var stale_abs := ProjectSettings.globalize_path(
+		DEFAULT_SHARED_ADDONS_PATH.path_join(stale_name)
+	)
+	if not DirAccess.dir_exists_absolute(stale_abs):
+		return
+	edir.remove_recursive(stale_abs)
+	Output.push("Removed stale shared gd-plug folder: %s" % stale_abs)
+
+
+func _install_shared_gd_plug_from_bundle() -> Error:
+	if is_shared_gd_plug_installed():
+		return OK
+	_remove_stale_shared_gd_plug_folder()
+	var src_abs := ProjectSettings.globalize_path("res://addons/gd-plug")
+	if not DirAccess.dir_exists_absolute(src_abs):
+		Output.push("Bundled gd-plug not found at res://addons/gd-plug (%s)" % src_abs)
+		return ERR_FILE_NOT_FOUND
+	var abs_dest := ProjectSettings.globalize_path(shared_gd_plug_path())
+	if DirAccess.dir_exists_absolute(abs_dest):
+		edir.remove_recursive(abs_dest)
+	DirAccess.make_dir_recursive_absolute(abs_dest)
+	_copy_dir_recursive(src_abs, abs_dest)
+	if not is_shared_gd_plug_installed():
+		Output.push("Bundled gd-plug copy failed: plug.gd missing at %s" % abs_dest)
+		return FAILED
+	Output.push("Installed bundled gd-plug to %s" % abs_dest)
+	return OK
+
+
+func link_shared_gd_plug_to_project(project_dir: String) -> Error:
+	if project_dir.is_empty():
+		return ERR_INVALID_PARAMETER
+	if not is_shared_gd_plug_installed():
+		return ERR_FILE_NOT_FOUND
+	var src_abs := ProjectSettings.globalize_path(shared_gd_plug_path())
+	var link_abs := project_dir.path_join("addons").path_join(GD_PLUG_FOLDER)
+	if DirAccess.dir_exists_absolute(link_abs) or _is_dir_link(link_abs):
+		return OK
+	var addons_root := link_abs.get_base_dir()
+	var mk_err := DirAccess.make_dir_recursive_absolute(addons_root)
+	if mk_err != OK:
+		return mk_err
+	return _create_dir_link(src_abs, link_abs)
+
+
+## Finds addon folders in the zip (under any **/addons/{name}/ path, or as
+## top-level folders) and copies them to the given addons bucket.
+func install_addon_zip_to(zip_abs_path: String, bucket: String) -> Error:
+	if bucket.is_empty():
+		return ERR_INVALID_PARAMETER
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(bucket))
+
+	var reader := ZIPReader.new()
+	var open_err := reader.open(zip_abs_path)
+	if open_err != OK:
+		return open_err
+
+	var targets := _find_addon_extract_targets(reader.get_files(), zip_abs_path)
+	if targets.is_empty():
+		reader.close()
+		Output.push("No addon content found in zip: %s" % zip_abs_path)
 		return ERR_FILE_NOT_FOUND
 
 	var installed := 0
-	for plugin_cfg_path in plugin_cfg_paths:
-		var plugin_dir := plugin_cfg_path.get_base_dir().trim_suffix("/")
-		var plugin_name := format_addon_dir_name(plugin_dir.get_file())
+	for target: Variant in targets:
+		var prefix: String = target.prefix
+		var folder_name: String = target.name
+		var plugin_name := format_addon_dir_name(folder_name)
 		if plugin_name.is_empty():
 			continue
-		var prefix := plugin_dir + "/"
 		var dest := bucket.path_join(plugin_name)
 		var abs_dest := ProjectSettings.globalize_path(dest)
 		if DirAccess.dir_exists_absolute(abs_dest):
@@ -533,16 +705,93 @@ func install_addon_zip(
 	return OK if installed > 0 else FAILED
 
 
-func _extract_zip_prefix(reader: ZIPReader, prefix: String, dest: String) -> Error:
-	for entry: String in reader.get_files():
-		if not entry.begins_with(prefix):
+## Finds addon folders in the zip and copies them to
+## user://addons/{version}[/_mono]/{name}/
+func install_addon_zip(
+	zip_abs_path: String,
+	version: String,
+	is_mono := false
+) -> Error:
+	var bucket := ensure_addons_dir(version, is_mono)
+	if bucket.is_empty():
+		return ERR_INVALID_PARAMETER
+	return install_addon_zip_to(zip_abs_path, bucket)
+
+
+func _find_addon_extract_targets(
+	entries: PackedStringArray,
+	zip_abs_path: String
+) -> Array[Variant]:
+	var from_addons := _find_addons_folder_targets(entries)
+	if not from_addons.is_empty():
+		return from_addons
+	return _find_root_folder_targets(entries, zip_abs_path)
+
+
+func _find_addons_folder_targets(entries: PackedStringArray) -> Array:
+	var by_prefix := {}
+	for entry in entries:
+		var segments := entry.replace("\\", "/").split("/", false)
+		for i in range(segments.size()):
+			if segments[i] != "addons":
+				continue
+			if i + 1 >= segments.size():
+				break
+			var folder_name: String = segments[i + 1]
+			if folder_name.is_empty() or folder_name.begins_with("."):
+				break
+			var prefix := "/".join(segments.slice(0, i + 2)) + "/"
+			by_prefix[prefix] = folder_name
+			break
+
+	var result: Array = []
+	for prefix: Variant in by_prefix:
+		result.append({"prefix": prefix, "name": by_prefix[prefix]})
+	return result
+
+
+func _find_root_folder_targets(entries: PackedStringArray, zip_abs_path: String) -> Array:
+	var top_dirs := {}
+	for entry in entries:
+		var path := entry.replace("\\", "/").trim_suffix("/")
+		if path.is_empty():
 			continue
-		var relative := entry.substr(prefix.length())
+		var first_slash := path.find("/")
+		if first_slash == -1:
+			continue
+		var top := path.substr(0, first_slash)
+		if not top.is_empty():
+			top_dirs[top] = true
+
+	if top_dirs.is_empty():
+		var base := zip_abs_path.get_file().get_basename()
+		if base.is_empty():
+			return []
+		return [{"prefix": "", "name": base}]
+
+	if top_dirs.size() == 1:
+		var wrapper: String = top_dirs.keys()[0]
+		return [{"prefix": wrapper + "/", "name": wrapper}]
+
+	var result: Array = []
+	for top: Variant in top_dirs:
+		result.append({"prefix": top + "/", "name": top})
+	return result
+
+
+func _extract_zip_prefix(reader: ZIPReader, prefix: String, dest: String) -> Error:
+	var normalized_prefix := prefix.replace("\\", "/")
+	var files_written := 0
+	for entry: String in reader.get_files():
+		var normalized := entry.replace("\\", "/")
+		if not normalized_prefix.is_empty() and not normalized.begins_with(normalized_prefix):
+			continue
+		var relative := normalized.substr(normalized_prefix.length()) if not normalized_prefix.is_empty() else normalized
 		if relative.is_empty():
 			continue
 		var target := dest.path_join(relative)
 		var abs_target := ProjectSettings.globalize_path(target)
-		if entry.ends_with("/"):
+		if normalized.ends_with("/"):
 			var dir_err := DirAccess.make_dir_recursive_absolute(abs_target)
 			if dir_err != OK:
 				return dir_err
@@ -556,7 +805,8 @@ func _extract_zip_prefix(reader: ZIPReader, prefix: String, dest: String) -> Err
 			return FileAccess.get_open_error()
 		file.store_buffer(reader.read_file(entry))
 		file.close()
-	return OK
+		files_written += 1
+	return OK if files_written > 0 else ERR_FILE_NOT_FOUND
 
 
 func _enter_tree() -> void:	
@@ -565,6 +815,7 @@ func _enter_tree() -> void:
 	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(DEFAULT_UPDATES_PATH))
 	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(DEFAULT_CACHE_DIR_PATH))
 	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(DEFAULT_ADDONS_PATH))
+	DirAccess.make_dir_absolute(ProjectSettings.globalize_path(DEFAULT_SHARED_ADDONS_PATH))
 	_cfg.load(APP_CONFIG_PATH)
 	assert(not DEFAULT_VERSIONS_PATH.ends_with("/"))
 	assert(not DEFAULT_DOWNLOADS_PATH.ends_with("/"))
@@ -579,6 +830,7 @@ func _enter_tree() -> void:
 		Engine.get_version_info().string
 	]
 	_setup_scale()
+	call_deferred("ensure_shared_gd_plug_bg")
 
 
 func _setup_scale() -> void:

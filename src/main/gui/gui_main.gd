@@ -278,7 +278,7 @@ func _setup_asset_lib_projects() -> void:
 				asset_download.set_status(tr("Failed to install addon."))
 				var msg := tr("Could not install addon into addons bucket for Godot %s.") % godot_version
 				if install_err == ERR_FILE_NOT_FOUND:
-					msg = tr("No plugin.cfg found in the downloaded archive.")
+					msg = tr("No addon content found in the downloaded archive.")
 				asset_download.popup_error_dialog(msg)
 				return
 			asset_download.set_status(tr("Addon installed."))
