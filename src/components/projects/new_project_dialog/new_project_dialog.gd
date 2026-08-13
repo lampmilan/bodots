@@ -152,6 +152,50 @@ class NewProjectGodot3Form extends VBoxContainer:
 class NewProjectGodot4 extends NewProjectHandler:
 	const ICON_SVG := """<svg height="128" width="128" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="124" height="124" rx="14" fill="#363d52" stroke="#212532" stroke-width="4"/><g transform="scale(.101) translate(122 122)"><g fill="#fff"><path d="M105 673v33q407 354 814 0v-33z"/><path fill="#478cbf" d="m105 673 152 14q12 1 15 14l4 67 132 10 8-61q2-11 15-15h162q13 4 15 15l8 61 132-10 4-67q3-13 15-14l152-14V427q30-39 56-81-35-59-83-108-43 20-82 47-40-37-88-64 7-51 8-102-59-28-123-42-26 43-46 89-49-7-98 0-20-46-46-89-64 14-123 42 1 51 8 102-48 27-88 64-39-27-82-47-48 49-83 108 26 42 56 81zm0 33v39c0 276 813 276 813 0v-39l-134 12-5 69q-2 10-14 13l-162 11q-12 0-16-11l-10-65H447l-10 65q-4 11-16 11l-162-11q-12-3-14-13l-5-69z"/><path d="M483 600c3 34 55 34 58 0v-86c-3-34-55-34-58 0z"/><circle cx="725" cy="526" r="90"/><circle cx="299" cy="526" r="90"/></g><g fill="#414042"><circle cx="307" cy="532" r="60"/><circle cx="717" cy="532" r="60"/></g></g></svg>"""
 
+	const GITATTRIBUTES := """# Text
+* text=auto eol=lf
+*.gd text eol=lf
+*.cs text eol=lf
+*.tscn text eol=lf
+*.tres text eol=lf
+*.cfg text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+*.csv text eol=lf
+*.svg text eol=lf
+*.shader text eol=lf
+*.gdshader text eol=lf
+
+# Git LFS — images
+*.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.bmp filter=lfs diff=lfs merge=lfs -text
+*.tga filter=lfs diff=lfs merge=lfs -text
+*.exr filter=lfs diff=lfs merge=lfs -text
+*.hdr filter=lfs diff=lfs merge=lfs -text
+
+# Git LFS — audio / video
+*.wav filter=lfs diff=lfs merge=lfs -text
+*.ogg filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.flac filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.webm filter=lfs diff=lfs merge=lfs -text
+*.mov filter=lfs diff=lfs merge=lfs -text
+
+# Git LFS — 3D / DCC
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text
+*.gltf filter=lfs diff=lfs merge=lfs -text
+*.glb filter=lfs diff=lfs merge=lfs -text
+*.obj filter=lfs diff=lfs merge=lfs -text
+*.dae filter=lfs diff=lfs merge=lfs -text
+"""
+
 	func custom_form() -> Control:
 		return NewProjectGodot4Form.new()
 
@@ -175,23 +219,15 @@ class NewProjectGodot4 extends NewProjectHandler:
 			])
 			return
 		else:
-			#vcs meta
+			if form.plugin_manager() == "gd_plug":
+				if not _write_gd_plug(dir):
+					ctx.show_error(tr("Couldn't create plug.gd in project path."))
+					return
 			if form.vsc_meta() == "git":
-				var gitignore := FileAccess.open(dir.path_join(".gitignore"), FileAccess.WRITE)
-				if gitignore != null:
-					gitignore.store_line("# Godot 4+ specific ignores")
-					gitignore.store_line(".godot/")
-					gitignore.close()
-				else:
+				if not _write_gitignore(dir, form.plugin_manager() == "gd_plug"):
 					ctx.show_error(tr("Couldn't create .gitignore in project path."))
 					return
-			
-				var gitattributes := FileAccess.open(dir.path_join(".gitattributes"), FileAccess.WRITE)
-				if gitattributes != null:
-					gitattributes.store_line("# Normalize EOL for all files that Git considers text files.")
-					gitattributes.store_line("* text=auto eol=lf")
-					gitattributes.close()
-				else:
+				if not _write_gitattributes(dir):
 					ctx.show_error(tr("Couldn't create .gitattributes in project path."))
 					return
 
@@ -205,10 +241,77 @@ class NewProjectGodot4 extends NewProjectHandler:
 	func label() -> String:
 		return "Godot 4.x"
 
+	func _write_gd_plug(dir: String) -> bool:
+		var plug_gd := FileAccess.open(dir.path_join("plug.gd"), FileAccess.WRITE)
+		if plug_gd == null:
+			return false
+		var lines: PackedStringArray = [
+			'extends "res://addons/gd-plug/plug.gd"',
+			'func _plugging():',
+			'# Declare your plugins in here with plug(src, args)',
+			'pass',
+		]
+		for line in lines:
+			plug_gd.store_line(line)
+		plug_gd.close()
+		return true
+
+
+	func _write_gitignore(dir: String, use_gd_plug: bool) -> bool:
+		var gitignore := FileAccess.open(dir.path_join(".gitignore"), FileAccess.WRITE)
+		if gitignore == null:
+			return false
+		var lines: PackedStringArray = [
+			"# Godot 4+",
+			".godot/",
+			"*.translation",
+			"",
+			"# Imports / junk",
+			".import/",
+			"",
+			"# Mono / C#",
+			".mono/",
+			"data_*/",
+			"mono_crash.*.json",
+			"",
+			"# OS",
+			".DS_Store",
+			"Thumbs.db",
+			"*~",
+			"",
+			"# Builds",
+			"*.apk",
+			"*.aab",
+			"*.ipa",
+			"*.exe",
+			"*.x86_64",
+			"*.app",
+		]
+		if use_gd_plug:
+			lines.append_array([
+				"",
+				"# Plugin manager (like node_modules) - restore via gd-plug",
+				".plugged/",
+				"addons/",
+			])
+		for line in lines:
+			gitignore.store_line(line)
+		gitignore.close()
+		return true
+
+	func _write_gitattributes(dir: String) -> bool:
+		var gitattributes := FileAccess.open(dir.path_join(".gitattributes"), FileAccess.WRITE)
+		if gitattributes == null:
+			return false
+		gitattributes.store_string(GITATTRIBUTES)
+		gitattributes.close()
+		return true
+
 
 class NewProjectGodot4Form extends VBoxContainer:
 	var _renderer: RendererSelect
 	var _vcs_meta: VersionControlMetadata
+	var _plugin_manager: PluginManagerMetadata
 
 	func _init() -> void:
 		_renderer = RendererSelect.new({
@@ -259,13 +362,21 @@ class NewProjectGodot4Form extends VBoxContainer:
 		]).add_to(self)
 		
 		_vcs_meta = VersionControlMetadata.new()
-		add_child(_vcs_meta)
+		_plugin_manager = PluginManagerMetadata.new()
+		var meta_row := HBoxContainer.new()
+		meta_row.add_theme_constant_override("separation", int(16 * Config.EDSCALE))
+		meta_row.add_child(_vcs_meta)
+		meta_row.add_child(_plugin_manager)
+		add_child(meta_row)
 	
 	func renderer_method() -> String:
 		return _renderer.current()
 	
 	func vsc_meta() -> String:
 		return _vcs_meta.current()
+
+	func plugin_manager() -> String:
+		return _plugin_manager.current()
 
 
 class VersionControlMetadata extends HBoxContainer:
@@ -288,6 +399,26 @@ class VersionControlMetadata extends HBoxContainer:
 	func current() -> String:
 		return _options.get_item_metadata(_options.selected) as String
 
+
+class PluginManagerMetadata extends HBoxContainer:
+	var _options: OptionButton
+	
+	func _init() -> void:
+		var label: Label = Label.new()
+		label.text = tr("Plugin Manager:")
+		
+		_options = OptionButton.new()
+		_options.add_item("None")
+		_options.set_item_metadata(_options.item_count - 1, "none")
+		
+		_options.add_item("GD Plug")
+		_options.set_item_metadata(_options.item_count - 1, "gd_plug")
+		
+		add_child(label)
+		add_child(_options)
+
+	func current() -> String:
+		return _options.get_item_metadata(_options.selected) as String
 
 
 class RendererSelect extends VBoxContainer:
