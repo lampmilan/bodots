@@ -1,23 +1,27 @@
 # **Bodots - The B(etter) (G)odots launcher**
 
 **Bodots** is a custom fork of the Godots launcher.
-The main goal is to extend the default launcher with features, that might be cool to have.
+The main goal is to extend the default launcher with features, that might be good to have.
 
 <p align="center">
 <img width="812" src="https://github.com/MakovWait/godots/assets/39778897/607ce24b-2c39-4ede-8810-f7c528a496d2">
 </p>
 
----
+
+This project is currently a Work in Progress (WIP)/Proof of Concept (PoC).
 
 ## **Features**
-- Global Add-ons
-  * Allow users to download/store add-ons globally and attach them to any project via symlinks/junctions.
+- Global Add-on Management:
+  * Share a single set of add-ons across all your project without duplicating files
+  * Toggle global add-ons on or off per project with a single click.
+- Build-in Plugin Manager:
+  * Initialize new projects instantly with GD-Plug pre-configured as your default manager.
+  * Automatically detect and synchronize updates to global add-ons.
+  * GD-Plug handles dependency downloads automatically, so you don't need to track the `addons/` directory in version control.
+- Streamlined Git & LFS Setup
+  * pre-configured `.gitignore` and `.gitattributes` designed for Godot and Git LFS.
 
 ## **VIP**
-- Package Manager
-  * Treat res://addons/ like node_modules/ driven by bodots.json
-- One-Click Git & LFS Initialization
-  * Automate project setup so new projects are source-control ready out of the box.
 - Multi-Project Workspaces
   * Support modular / multi-project game architectures. 
 
