@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://y66arhcu8pxs"]
+
+[ext_resource type="Script" path="res://src/components/editors/local/editor_item/addon_list_dialog.gd" id="1_addon"]
+
+[node name="AddonListDialog" type="AcceptDialog"]
+title = "Addons"
+ok_button_text = "Close"
+script = ExtResource("1_addon")
+
+[node name="Tree" type="Tree" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 342.0
+offset_bottom = 300.0
+size_flags_horizontal = 3
+size_flags_vertical = 3

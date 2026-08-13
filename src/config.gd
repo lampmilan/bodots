@@ -279,6 +279,194 @@ static func ensure_addons_dir(version: String, is_mono := false) -> String:
 	return path
 
 
+static func list_installed_addons(version: String, is_mono := false) -> PackedStringArray:
+	var result: PackedStringArray = []
+	if version.is_empty():
+		return result
+	var bucket := ProjectSettings.globalize_path(addons_dir_for(version, is_mono))
+	if not DirAccess.dir_exists_absolute(bucket):
+		return result
+	var dir := DirAccess.open(bucket)
+	if dir == null:
+		return result
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if dir.current_is_dir() and not entry.begins_with("."):
+			result.append(entry)
+		entry = dir.get_next()
+	dir.list_dir_end()
+	result.sort()
+	return result
+
+
+static func uninstall_addon(version: String, addon_folder: String, is_mono := false) -> Error:
+	if version.is_empty() or addon_folder.is_empty():
+		return ERR_INVALID_PARAMETER
+	if addon_folder.contains("..") or addon_folder.contains("/") or addon_folder.contains("\\"):
+		return ERR_INVALID_PARAMETER
+	var abs_path := ProjectSettings.globalize_path(
+		addons_dir_for(version, is_mono).path_join(addon_folder)
+	)
+	if not DirAccess.dir_exists_absolute(abs_path):
+		return ERR_FILE_NOT_FOUND
+	edir.remove_recursive(abs_path)
+	return OK if not DirAccess.dir_exists_absolute(abs_path) else FAILED
+
+
+static func global_addon_src_path(version: String, addon_folder: String, is_mono := false) -> String:
+	return ProjectSettings.globalize_path(
+		addons_dir_for(version, is_mono).path_join(addon_folder)
+	)
+
+
+static func project_addon_path(project_godot_path: String, addon_folder: String) -> String:
+	return project_godot_path.get_base_dir().path_join("addons").path_join(addon_folder)
+
+
+static func is_global_addon_enabled_for_project(
+	project_godot_path: String,
+	addon_folder: String
+) -> bool:
+	var path := project_addon_path(project_godot_path, addon_folder)
+	return DirAccess.dir_exists_absolute(path) or _is_dir_link(path)
+
+
+static func enable_global_addon_for_project(
+	project_godot_path: String,
+	version: String,
+	addon_folder: String,
+	is_mono := false
+) -> Error:
+	if version.is_empty() or addon_folder.is_empty() or project_godot_path.is_empty():
+		return ERR_INVALID_PARAMETER
+	if addon_folder.contains("..") or addon_folder.contains("/") or addon_folder.contains("\\"):
+		return ERR_INVALID_PARAMETER
+	var src := global_addon_src_path(version, addon_folder, is_mono)
+	if not DirAccess.dir_exists_absolute(src):
+		return ERR_FILE_NOT_FOUND
+	var dest := project_addon_path(project_godot_path, addon_folder)
+	if DirAccess.dir_exists_absolute(dest) or _is_dir_link(dest):
+		return OK
+	var addons_root := dest.get_base_dir()
+	var mk_err := DirAccess.make_dir_recursive_absolute(addons_root)
+	if mk_err != OK:
+		return mk_err
+	return _create_dir_link(src, dest)
+
+
+static func disable_global_addon_for_project(
+	project_godot_path: String,
+	addon_folder: String
+) -> Error:
+	if addon_folder.is_empty() or project_godot_path.is_empty():
+		return ERR_INVALID_PARAMETER
+	if addon_folder.contains("..") or addon_folder.contains("/") or addon_folder.contains("\\"):
+		return ERR_INVALID_PARAMETER
+	var dest := project_addon_path(project_godot_path, addon_folder)
+	if not DirAccess.dir_exists_absolute(dest) and not _is_dir_link(dest):
+		return OK
+	# Prefer removing a link only; fall back to recursive delete for copies.
+	if _is_dir_link(dest):
+		var err := DirAccess.remove_absolute(dest)
+		return err
+	var marker := dest.path_join(".godots-global-addon")
+	if FileAccess.file_exists(marker):
+		edir.remove_recursive(dest)
+		return OK if not DirAccess.dir_exists_absolute(dest) else FAILED
+	# Existing local addon with same name — do not delete.
+	return ERR_ALREADY_EXISTS
+
+
+static func _create_dir_link(target_abs: String, link_abs: String) -> Error:
+	var output := []
+	var exit_code: int
+	if OS.has_feature("windows"):
+		exit_code = OS.execute(
+			"cmd.exe",
+			[
+				"/c",
+				"mklink",
+				"/J",
+				link_abs.replace("/", "\\"),
+				target_abs.replace("/", "\\")
+			],
+			output,
+			true
+		)
+	else:
+		exit_code = OS.execute(
+			"ln",
+			["-s", target_abs, link_abs],
+			output,
+			true
+		)
+	if exit_code != 0:
+		Output.push("Failed to link addon: %s" % str(output))
+		# Fallback: copy and mark as managed.
+		return _copy_addon_with_marker(target_abs, link_abs)
+	return OK
+
+
+static func _copy_addon_with_marker(src_abs: String, dest_abs: String) -> Error:
+	edir.remove_recursive(dest_abs)
+	var err := DirAccess.make_dir_recursive_absolute(dest_abs)
+	if err != OK:
+		return err
+	_copy_dir_recursive(src_abs, dest_abs)
+	var marker := FileAccess.open(dest_abs.path_join(".godots-global-addon"), FileAccess.WRITE)
+	if marker == null:
+		return FileAccess.get_open_error()
+	marker.store_string("managed-by-godots")
+	marker.close()
+	return OK
+
+
+static func _copy_dir_recursive(src: String, dest: String) -> void:
+	var dir := DirAccess.open(src)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var entry := dir.get_next()
+	while entry != "":
+		if entry == "." or entry == "..":
+			entry = dir.get_next()
+			continue
+		var from_path := src.path_join(entry)
+		var to_path := dest.path_join(entry)
+		if dir.current_is_dir():
+			DirAccess.make_dir_recursive_absolute(to_path)
+			_copy_dir_recursive(from_path, to_path)
+		else:
+			DirAccess.copy_absolute(from_path, to_path)
+		entry = dir.get_next()
+	dir.list_dir_end()
+
+
+static func _is_dir_link(path: String) -> bool:
+	if path.is_empty():
+		return false
+	if OS.has_feature("windows"):
+		var output := []
+		var code := OS.execute(
+			"powershell.exe",
+			[
+				"-NoProfile",
+				"-Command",
+				"(Get-Item -LiteralPath '%s' -Force -ErrorAction SilentlyContinue).Attributes -match 'ReparsePoint'" % path.replace("'", "''")
+			],
+			output,
+			true
+		)
+		if code != 0 or output.is_empty():
+			return false
+		return str(output[0]).strip_edges().to_lower() == "true"
+	# Unix: symlink — FileAccess/DirAccess may still see it as a dir.
+	var output := []
+	var code := OS.execute("test", ["-L", path], output, true)
+	return code == 0
+
+
 func format_addon_dir_name(original_name: String) -> String:
 	var name := original_name.validate_filename().replace("'", "").replace("\"", "")
 	match DIRECTORY_NAMING_CONVENTION.ret() as String:

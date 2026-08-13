@@ -13,7 +13,7 @@ class Settings:
 	var _default_visible_keys: Array[String]
 	
 	func _init(cache_section: String, default_visible_keys: Array[String]) -> void:
-		_visible_keys = Cache.smart_value(cache_section, 'visible-keys', true)
+		_visible_keys = Cache.smart_value(cache_section, 'visible-keys-v2', true)
 		_show_tags = Cache.smart_value(cache_section, 'show-tags', true) 
 		_show_features = Cache.smart_value(cache_section, 'show-features', true) 
 		_is_flat = Cache.smart_value(cache_section, 'is-flat', true)

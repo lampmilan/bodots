@@ -9,6 +9,7 @@ signal tag_clicked(tag: String)
 
 @export var _rename_dialog_scene: PackedScene
 @export var _view_owners_dialog_scene: PackedScene
+@export var _addon_list_dialog_scene: PackedScene
 @export var _add_extra_arguments_scene: PackedScene
 
 @onready var _path_label: Label = %PathLabel
@@ -23,7 +24,7 @@ signal tag_clicked(tag: String)
 
 static var settings := EditorItemActions.Settings.new(
 	'editor-item-inline-actions',
-	['run', 'remove']
+	['run', 'addons', 'remove']
 )
 
 var _actions: Action.List
@@ -184,6 +185,13 @@ func _fill_actions(item: LocalEditors.Item) -> void:
 		"label": tr("View References"),
 	})
 
+	var addons := Action.from_dict({
+		"key": "addons",
+		"icon": Action.IconTheme.new(self, "AssetLib", "EditorIcons"),
+		"act": _view_addons.bind(item),
+		"label": tr("Addons"),
+	})
+
 	var remove := Action.from_dict({
 		"key": "remove",
 		"icon": Action.IconTheme.new(self, "Remove", "EditorIcons"),
@@ -205,6 +213,7 @@ func _fill_actions(item: LocalEditors.Item) -> void:
 		add_extra_arguments,
 		view_command,
 		view_owners,
+		addons,
 		show_in_file_manager,
 		remove
 	])
@@ -217,13 +226,20 @@ func _update_actions_availability(item: LocalEditors.Item) -> void:
 		'rename',
 		'add-extra-args',
 		'view-command',
-		'view-owners'
+		'view-owners',
+		'addons'
 	]).all():
 		action.disable(not item.is_valid)
 
 
 func _view_owners(item: LocalEditors.Item) -> void:
 	var scene: ShowOwnersDialog = _view_owners_dialog_scene.instantiate()
+	add_child(scene)
+	scene.raise(item)
+
+
+func _view_addons(item: LocalEditors.Item) -> void:
+	var scene: AddonListDialog = _addon_list_dialog_scene.instantiate()
 	add_child(scene)
 	scene.raise(item)
 

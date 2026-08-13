@@ -8,6 +8,7 @@ signal duplicate_requested
 signal tag_clicked(tag: String)
 
 @export var _rename_dialog_scene: PackedScene
+@export var _global_addons_dialog_scene: PackedScene
 
 @onready var _path_label: Label = %PathLabel
 @onready var _title_label: Label = %TitleLabel
@@ -27,7 +28,7 @@ signal tag_clicked(tag: String)
 
 static var settings := ProjectItemActions.Settings.new(
 	'project-item-inline-actions',
-	['run', 'edit', 'remove']
+	['run', 'edit', 'global-addons', 'remove']
 )
 
 var _actions: Action.List
@@ -187,6 +188,13 @@ func _fill_actions(item: Projects.Item) -> void:
 		"act": _view_command.bind(item),
 		"label": tr("Edit Commands"),
 	})
+
+	var global_addons := Action.from_dict({
+		"key": "global-addons",
+		"icon": Action.IconTheme.new(self, "AssetLib", "EditorIcons"),
+		"act": _view_global_addons.bind(item),
+		"label": tr("Global Addons"),
+	})
 	
 	var remove := Action.from_dict({
 		"key": "remove",
@@ -205,6 +213,7 @@ func _fill_actions(item: Projects.Item) -> void:
 	_actions = Action.List.new([
 		edit,
 		run,
+		global_addons,
 		duplicate,
 		rename,
 		bind_editor,
@@ -248,6 +257,7 @@ func _fill_data(item: Projects.Item) -> void:
 		'view-command',
 		'edit',
 		'run',
+		'global-addons',
 	]).all():
 		action.disable(item.is_missing or item.has_invalid_editor)
 
@@ -258,6 +268,12 @@ func _view_command(item: Projects.Item) -> void:
 		command_viewer.raise(
 			_get_commands(item), true
 		)
+
+
+func _view_global_addons(item: Projects.Item) -> void:
+	var scene: ProjectGlobalAddonsDialog = _global_addons_dialog_scene.instantiate()
+	add_child(scene)
+	scene.raise(item)
 
 
 func _get_commands(item: Projects.Item) -> CommandViewer.Commands:

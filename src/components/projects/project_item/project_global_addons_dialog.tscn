@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://ccv4iaeu6uie"]
+
+[ext_resource type="Script" path="res://src/components/projects/project_item/project_global_addons_dialog.gd" id="1_dialog"]
+
+[node name="ProjectGlobalAddonsDialog" type="AcceptDialog"]
+title = "Global Addons"
+ok_button_text = "Close"
+script = ExtResource("1_dialog")
+
+[node name="Tree" type="Tree" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 392.0
+offset_bottom = 300.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
